@@ -5,7 +5,7 @@ import torch
 from esm.esmfold.v1.esmfold import ESMFold
 
 
-def _load_model(model_name):
+def _load_model(model_name, dropout_layers=None):
     if model_name.endswith(".pt"):  # local, treat as filepath
         model_path = Path(model_name)
         model_data = torch.load(str(model_path), map_location="cpu")
@@ -15,7 +15,7 @@ def _load_model(model_name):
 
     cfg = model_data["cfg"]["model"]
     model_state = model_data["model"]
-    model = ESMFold(esmfold_config=cfg)
+    model = ESMFold(esmfold_config=cfg, dropout_layers=dropout_layers)
 
     expected_keys = set(model.state_dict().keys())
     found_keys = set(model_state.keys())
@@ -43,7 +43,7 @@ def esmfold_v0():
     return _load_model("esmfold_3B_v0")
 
 
-def esmfold_v1():
+def esmfold_v1(dropout_layers=None):
     """
     ESMFold v1 model using 3B ESM-2, 48 folding blocks.
     ESMFold provides fast high accuracy atomic level structure prediction
@@ -51,4 +51,4 @@ def esmfold_v1():
     protein language model to extract meaningful representations from the
     protein sequence.
     """
-    return _load_model("esmfold_3B_v1")
+    return _load_model("esmfold_3B_v1", dropout_layers)

@@ -31,15 +31,15 @@ class ESMFoldConfig:
 
 
 class ESMFold(nn.Module):
-    def __init__(self, esmfold_config=None, **kwargs):
+    def __init__(self, dropout_layers=None, esmfold_config=None, **kwargs):
         super().__init__()
 
         self.cfg = esmfold_config if esmfold_config else ESMFoldConfig(**kwargs)
         cfg = self.cfg
 
         self.distogram_bins = 64
-
-        self.esm, self.esm_dict = esm.pretrained.esm2_t36_3B_UR50D()
+        
+        self.esm, self.esm_dict = esm.pretrained.esm2_t36_3B_UR50D(dropout_layers)
 
         self.esm.requires_grad_(False)
         self.esm.half()

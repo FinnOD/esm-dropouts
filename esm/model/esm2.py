@@ -19,7 +19,8 @@ class ESM2(nn.Module):
         attention_heads: int = 20,
         alphabet: Union[esm.data.Alphabet, str] = "ESM-1b",
         token_dropout: bool = True,
-    ):
+        layers_attention_dropout = None, #List[Float]
+     ):
         super().__init__()
         self.num_layers = num_layers
         self.embed_dim = embed_dim
@@ -35,6 +36,12 @@ class ESM2(nn.Module):
         self.prepend_bos = alphabet.prepend_bos
         self.append_eos = alphabet.append_eos
         self.token_dropout = token_dropout
+        
+        if layers_attention_dropout is None: # Default to 0 dropout on each layer
+            layers_attention_dropout = list(0.0 for i in range(num_layers))
+            
+        assert len(layers_attention_dropout) == self.num_layers
+        self.layers_attention_dropout = layers_attention_dropout
 
         self._init_submodules()
 
@@ -55,8 +62,9 @@ class ESM2(nn.Module):
                     add_bias_kv=False,
                     use_esm1b_layer_norm=True,
                     use_rotary_embeddings=True,
+                    attention_dropout = self.layers_attention_dropout[i]
                 )
-                for _ in range(self.num_layers)
+                for i in range(self.num_layers)
             ]
         )
 

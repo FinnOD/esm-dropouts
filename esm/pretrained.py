@@ -59,9 +59,9 @@ def _download_model_and_regression_data(model_name):
     return model_data, regression_data
 
 
-def load_model_and_alphabet_hub(model_name):
+def load_model_and_alphabet_hub(model_name, dropout_layers=None):
     model_data, regression_data = _download_model_and_regression_data(model_name)
-    return load_model_and_alphabet_core(model_name, model_data, regression_data)
+    return load_model_and_alphabet_core(model_name, model_data, regression_data, dropout_layers)
 
 
 def load_model_and_alphabet_local(model_location):
@@ -161,7 +161,7 @@ def _load_model_and_alphabet_core_v1(model_data):
     return model, alphabet, model_state
 
 
-def _load_model_and_alphabet_core_v2(model_data):
+def _load_model_and_alphabet_core_v2(model_data, dropout_layers=None):
     def upgrade_state_dict(state_dict):
         """Removes prefixes 'model.encoder.sentence_encoder.' and 'model.encoder.'."""
         prefixes = ["encoder.sentence_encoder.", "encoder."]
@@ -179,18 +179,19 @@ def _load_model_and_alphabet_core_v2(model_data):
         attention_heads=cfg.encoder_attention_heads,
         alphabet=alphabet,
         token_dropout=cfg.token_dropout,
+        layers_attention_dropout=dropout_layers
     )
     return model, alphabet, state_dict
 
 
-def load_model_and_alphabet_core(model_name, model_data, regression_data=None):
+def load_model_and_alphabet_core(model_name, model_data, regression_data=None, dropout_layers=None):
     if regression_data is not None:
         model_data["model"].update(regression_data["model"])
 
     if model_name.startswith("esm2"):
-        model, alphabet, model_state = _load_model_and_alphabet_core_v2(model_data)
+        model, alphabet, model_state = _load_model_and_alphabet_core_v2(model_data, dropout_layers)
     else:
-        model, alphabet, model_state = _load_model_and_alphabet_core_v1(model_data)
+        model, alphabet, model_state = _load_model_and_alphabet_core_v1(model_data, dropout_layers)
 
     expected_keys = set(model.state_dict().keys())
     found_keys = set(model_state.keys())
@@ -379,12 +380,12 @@ def esm2_t33_650M_UR50D():
     return load_model_and_alphabet_hub("esm2_t33_650M_UR50D")
 
 
-def esm2_t36_3B_UR50D():
+def esm2_t36_3B_UR50D(dropout_layers=None):
     """36 layer ESM-2 model with 3B params, trained on UniRef50.
 
     Returns a tuple of (Model, Alphabet).
     """
-    return load_model_and_alphabet_hub("esm2_t36_3B_UR50D")
+    return load_model_and_alphabet_hub("esm2_t36_3B_UR50D", dropout_layers)
 
 
 def esm2_t48_15B_UR50D():
@@ -408,7 +409,7 @@ def esmfold_v0():
     return esm.esmfold.v1.pretrained.esmfold_v0()
 
 
-def esmfold_v1():
+def esmfold_v1(dropout_layers=None):
     """
     ESMFold v1 model using 3B ESM-2, 48 folding blocks.
     ESMFold provides fast high accuracy atomic level structure prediction
@@ -417,4 +418,4 @@ def esmfold_v1():
     protein sequence.
     """
     import esm.esmfold.v1.pretrained
-    return esm.esmfold.v1.pretrained.esmfold_v1()
+    return esm.esmfold.v1.pretrained.esmfold_v1(dropout_layers=dropout_layers)
