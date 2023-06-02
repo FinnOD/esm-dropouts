@@ -22,6 +22,7 @@ extras = {
         "ml-collections",
         "einops",
         "scipy",
+        "binpacking",
     ]
 }
 

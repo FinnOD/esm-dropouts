@@ -1,4 +1,3 @@
-
 from pathlib import Path
 import sys,os
 import argparse
@@ -7,6 +6,7 @@ import sys
 import typing as T
 from pathlib import Path
 from timeit import default_timer as timer
+from tqdm.auto import tqdm
 
 import torch
 
@@ -58,20 +58,23 @@ def init_model_on_gpu_with_cpu_offloading(model):
     return model
 
 
+import binpacking #Finn OD addition 
 def create_batched_sequence_datasest(
     sequences: T.List[T.Tuple[str, str]], max_tokens_per_batch: int = 1024
 ) -> T.Generator[T.Tuple[T.List[str], T.List[str]], None, None]:
-
-    batch_headers, batch_sequences, num_tokens = [], [], 0
-    for header, seq in sequences:
-        if (len(seq) + num_tokens > max_tokens_per_batch) and num_tokens > 0:
-            yield batch_headers, batch_sequences
-            batch_headers, batch_sequences, num_tokens = [], [], 0
-        batch_headers.append(header)
-        batch_sequences.append(seq)
-        num_tokens += len(seq)
-
-    yield batch_headers, batch_sequences
+    
+        sequence_dict = {seq[0]:seq[1] for seq in sequences}
+        sequence_length_dict = {seq[0]:len(seq[1]) for seq in sequences}
+        
+        packed = binpacking.to_constant_volume(sequence_length_dict, max_tokens_per_batch)
+        for package in packed:
+            ids = list(package.keys())
+            sequences = [sequence_dict[id] for id in ids]
+                       
+            yield (
+                ids,
+                sequences,
+            )
 
 
 if __name__ == "__main__":
@@ -112,6 +115,12 @@ if __name__ == "__main__":
         "result in lower memory usage at the cost of speed. Recommended values: 128, 64, 32. "
         "Default: None.",
     )
+    parser.add_argument(
+        "--dropout",
+        type=str,
+        default=None,
+        help="List of 36 dropout values for the Transformer layers of ESM2. Seperate by ',' e.g. --dropout 0.0,0.1,0.2,0.1,0.0,0.1,0.2,0.1,0.0,0.1,0.2,0.1,0.0,0.1,0.2,0.1,0.0,0.1,0.2,0.1,0.0,0.1,0.2,0.1,0.0,0.1,0.2,0.1,0.0,0.1,0.2,0.1,0.0,0.1,0.2,0.1",
+    )
     parser.add_argument("--cpu-only", help="CPU only", action="store_true")
     parser.add_argument("--cpu-offload", help="Enable CPU offloading", action="store_true")
     args = parser.parse_args()
@@ -132,11 +141,19 @@ if __name__ == "__main__":
     if args.model_dir is not None:
         # if pretrained model path is available
         torch.hub.set_dir(args.model_dir)
+    
+    dropout_layers = None
+    if args.dropout:
+        dropout_layers = [float(x.strip()) for x in args.dropout.strip().split(',')]
+    
+    model = esm.pretrained.esmfold_v1(dropout_layers=dropout_layers)
 
-    model = esm.pretrained.esmfold_v1()
-
-
-    model = model.eval()
+    if args.dropout:
+        logger.info("Model running on train with dropout values:")
+        logger.info(dropout_layers)
+        model = model.train()
+    else:
+        model = model.eval()
     model.set_chunk_size(args.chunk_size)
 
     if args.cpu_only:
@@ -151,7 +168,7 @@ if __name__ == "__main__":
 
     num_completed = 0
     num_sequences = len(all_sequences)
-    for headers, sequences in batched_sequences:
+    for headers, sequences in tqdm(batched_sequences):
         start = timer()
         try:
             output = model.infer(sequences, num_recycles=args.num_recycles)
