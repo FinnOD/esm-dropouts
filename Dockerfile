@@ -29,5 +29,6 @@ RUN pip install 'dllogger @ git+https://github.com/NVIDIA/dllogger.git'
 RUN pip install 'openfold @ git+https://github.com/aqlaboratory/openfold.git@4b41059694619831a7db195b7e0988fc4ff3a307'
 RUN pip install 'fair-esm[esmfold] @ git+https://github.com/FinnOD/esm-dropouts.git'
 
-# download esm weights
+# download esm weights to appuser
+RUN adduser --disabled-password --gecos "" appuser
 RUN python -c "import esm; model = esm.pretrained.esmfold_v1()"
