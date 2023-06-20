@@ -11,6 +11,8 @@
 # Folders #
 ###########
 bin/
+lib/
+share/
 build/
 dist/
 local/
@@ -28,3 +30,6 @@ esm/dev
 *.swp
 *.log
 *~
+
+# venv
+pyvenv.cfg
