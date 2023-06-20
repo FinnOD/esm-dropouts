@@ -30,5 +30,7 @@ RUN pip install 'openfold @ git+https://github.com/aqlaboratory/openfold.git@4b4
 RUN pip install 'fair-esm[esmfold] @ git+https://github.com/FinnOD/esm-dropouts.git'
 
 # download esm weights to appuser
+SHELL ["/bin/bash", "-c"]
 RUN adduser --disabled-password --gecos "" appuser
-RUN python -c "import esm; model = esm.pretrained.esmfold_v1()"
+USER appuser
+RUN /opt/conda/envs/esmfold/bin/python3 -c "import esm; model = esm.pretrained.esmfold_v1()"
